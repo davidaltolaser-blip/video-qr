@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#111827">
+<title>Media QR — Scan to Watch / Read</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #f3f4f6;
+  --card: #ffffff;
+  --text: #111827;
+  --text-secondary: #6b7280;
+  --border: #e5e7eb;
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --accent-light: #eff6ff;
+  --danger: #dc2626;
+  --success: #16a34a;
+  --radius: 12px;
+  --shadow: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+  --shadow-lg: 0 10px 25px rgba(0,0,0,.08), 0 4px 10px rgba(0,0,0,.04);
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+.container { max-width: 640px; margin: 0 auto; padding: 24px 20px 60px; }
+
+/* Header */
+.header { text-align: center; padding: 32px 0 20px; }
+.header h1 { font-size: 28px; font-weight: 600; letter-spacing: -0.5px; }
+.header p { color: var(--text-secondary); font-size: 14px; margin-top: 6px; }
+
+/* Card */
+.card {
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 28px 24px;
+  margin-bottom: 20px;
+}
+
+.card-title { font-size: 16px; font-weight: 600; margin-bottom: 16px; }
+
+/* Type tabs */
+.type-tabs { display: flex; gap: 6px; margin-bottom: 20px; }
+.type-tab {
+  flex: 1; text-align: center; padding: 10px 8px;
+  border: 1.5px solid var(--border); border-radius: 8px;
+  background: var(--card); font-size: 13px; font-weight: 500;
+  cursor: pointer; transition: all .15s; color: var(--text-secondary);
+}
+.type-tab:hover { border-color: #cbd5e1; color: var(--text); }
+.type-tab.active {
+  background: var(--accent-light); border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Input */
+.input-group { margin-bottom: 16px; }
+.input-group label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px; color: var(--text-secondary); }
+.input-group input, .input-group textarea {
+  width: 100%; padding: 11px 14px; border: 1.5px solid var(--border);
+  border-radius: 8px; font-size: 14px; font-family: inherit;
+  transition: border-color .15s; outline: none; background: #fafafa;
+}
+.input-group input:focus, .input-group textarea:focus { border-color: var(--accent); background: #fff; }
+.input-group .hint { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+
+/* Buttons */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: 6px; padding: 11px 22px; border-radius: 8px;
+  font-size: 14px; font-weight: 500; cursor: pointer;
+  border: none; transition: all .15s; font-family: inherit;
+}
+.btn-primary { background: var(--accent); color: #fff; width: 100%; }
+.btn-primary:hover { background: var(--accent-hover); }
+.btn-primary:disabled { background: #93c5fd; cursor: not-allowed; }
+.btn-outline {
+  background: var(--card); border: 1.5px solid var(--border);
+  color: var(--text);
+}
+.btn-outline:hover { border-color: #cbd5e1; background: #f9fafb; }
+.btn-sm { padding: 7px 14px; font-size: 13px; }
+
+.btn-row { display: flex; gap: 10px; margin-top: 16px; }
+
+/* QR area */
+.qr-wrapper { display: none; text-align: center; margin-top: 20px; }
+.qr-wrapper.show { display: block; }
+.qr-container {
+  display: inline-block; padding: 20px; background: #fff;
+  border: 2px solid var(--border); border-radius: var(--radius);
+}
+.qr-container canvas, .qr-container img { display: block; }
+.qr-url {
+  font-size: 12px; color: var(--text-secondary); margin-top: 12px;
+  word-break: break-all; max-width: 100%;
+}
+
+/* Page URL config */
+.page-url-config { display: none; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
+.page-url-config.show { display: block; }
+
+/* Player */
+#player { display: none; }
+#player.active { display: block; }
+.player-wrapper {
+  position: relative; width: 100%; background: #000;
+  border-radius: var(--radius); overflow: hidden;
+  box-shadow: var(--shadow-lg);
+}
+.player-wrapper.aspect-16-9 { padding-top: 56.25%; }
+.player-wrapper.aspect-16-9 iframe,
+.player-wrapper.aspect-16-9 video {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0;
+}
+.player-wrapper video {
+  width: 100%; display: block; border-radius: var(--radius);
+}
+
+/* PDF viewer */
+.pdf-viewer {
+  width: 100%; min-height: 80vh; border: 0;
+  border-radius: var(--radius); box-shadow: var(--shadow-lg);
+}
+
+.player-info { text-align: center; padding: 20px 0 0; }
+.player-info p { color: var(--text-secondary); font-size: 13px; }
+
+/* Tabs via radio (hidden) */
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* Status */
+.status { font-size: 13px; padding: 8px 12px; border-radius: 6px; margin-top: 12px; display: none; }
+.status.show { display: block; }
+.status.error { background: #fef2f2; color: var(--danger); }
+.status.success { background: #f0fdf4; color: var(--success); }
+.status.info { background: var(--accent-light); color: var(--accent); }
+
+/* Instructions */
+.instructions { font-size: 13px; color: var(--text-secondary); }
+.instructions ol { padding-left: 20px; }
+.instructions li { margin-bottom: 8px; }
+.instructions code {
+  background: #f1f5f9; padding: 2px 6px; border-radius: 4px;
+  font-size: 12px;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .container { padding: 16px 12px 40px; }
+  .card { padding: 20px 16px; }
+  .header h1 { font-size: 24px; }
+  .type-tab { font-size: 12px; padding: 8px 6px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ===== GENERATOR VIEW ===== -->
+<div id="generator" class="container">
+  <div class="header">
+    <h1>Media QR Generator</h1>
+    <p>Paste a video or PDF link, generate a QR code — scan to watch or read</p>
+  </div>
+
+  <!-- Video Input Card -->
+  <div class="card">
+    <div class="card-title">1. Choose media type</div>
+    <div class="type-tabs">
+      <button class="type-tab active" data-type="youtube">YouTube</button>
+      <button class="type-tab" data-type="vimeo">Vimeo</button>
+      <button class="type-tab" data-type="direct">Direct MP4</button>
+      <button class="type-tab" data-type="pdf">PDF</button>
+    </div>
+
+    <div class="tab-content active" data-panel="youtube">
+      <div class="input-group">
+        <label>YouTube video URL</label>
+        <input type="text" id="ytUrl" placeholder="https://www.youtube.com/watch?v=...">
+        <div class="hint">Paste a regular YouTube, youtu.be, or Shorts link</div>
+      </div>
+    </div>
+    <div class="tab-content" data-panel="vimeo">
+      <div class="input-group">
+        <label>Vimeo video URL</label>
+        <input type="text" id="vmUrl" placeholder="https://vimeo.com/...">
+        <div class="hint">Paste any Vimeo video link</div>
+      </div>
+    </div>
+    <div class="tab-content" data-panel="direct">
+      <div class="input-group">
+        <label>Direct video URL (MP4, WebM, etc.)</label>
+        <input type="text" id="dcUrl" placeholder="https://example.com/video.mp4">
+        <div class="hint">Direct link to a video file — best for global compatibility</div>
+      </div>
+    </div>
+    <div class="tab-content" data-panel="pdf">
+      <div class="input-group">
+        <label>PDF file URL</label>
+        <input type="text" id="pdfUrl" placeholder="https://example.com/document.pdf">
+        <div class="hint">Direct link to a PDF — opens in the phone's built-in reader</div>
+      </div>
+    </div>
+
+    <div class="card-title" style="margin-top:8px;">2. Optional — title</div>
+    <div class="input-group">
+      <input type="text" id="videoTitle" placeholder="e.g. Product Catalog 2024">
+      <div class="hint">Shown above the video or PDF when someone scans the QR code</div>
+    </div>
+
+    <button class="btn btn-primary" id="btnGenerate" onclick="generateQR()">
+      Generate QR Code
+    </button>
+
+    <div class="status" id="statusMsg"></div>
+
+    <!-- Page URL config -->
+    <div class="page-url-config" id="pageUrlConfig">
+      <div class="card-title">Page hosting URL</div>
+      <div class="input-group">
+        <label>Where this page will be hosted</label>
+        <input type="text" id="baseUrl" placeholder="https://your-site.com/video-qr.html">
+        <div class="hint">This URL is encoded into the QR code. Update it after you deploy.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- QR Code Output Card -->
+  <div class="card qr-wrapper" id="qrCard">
+    <div class="card-title">Your QR Code</div>
+    <div class="qr-container" id="qrContainer"></div>
+    <div class="qr-url" id="qrUrlDisplay"></div>
+    <div class="btn-row">
+      <button class="btn btn-outline btn-sm" onclick="downloadQR()">Download PNG</button>
+      <button class="btn btn-outline btn-sm" onclick="previewPlayer()">Preview</button>
+    </div>
+    <div class="status info show" style="margin-top:16px;">
+      <strong>Not deployed yet?</strong> The QR code won't work until you host this page online.
+      <br>See instructions below.
+    </div>
+  </div>
+
+  <!-- Instructions Card -->
+  <div class="card">
+    <div class="card-title">How to use</div>
+    <div class="instructions">
+      <ol>
+        <li><strong>Host this page</strong> — Upload <code>index.html</code> to any web server or use <strong>GitHub Pages</strong> (free, global CDN, 5 minutes to set up).</li>
+        <li><strong>Paste the hosting URL</strong> above (e.g. <code>https://username.github.io/video-qr</code>) and update it whenever you redeploy.</li>
+        <li><strong>Paste a media URL</strong> — YouTube, Vimeo, direct MP4, or PDF link.</li>
+        <li><strong>Generate & download</strong> the QR code as a PNG image.</li>
+        <li><strong>Print or share</strong> — scanning with a phone instantly opens the video or PDF.</li>
+      </ol>
+    </div>
+    <div class="status info show" style="margin-top:16px;">
+      <strong>Global access tip:</strong> For truly worldwide reach (including regions where YouTube is blocked), host files as direct URLs on a CDN (Cloudflare R2, AWS S3 + CloudFront, BunnyCDN, etc.) or upload PDFs directly to GitHub.
+    </div>
+  </div>
+</div>
+
+<!-- ===== PLAYER VIEW ===== -->
+<div id="player">
+  <div class="container">
+    <div class="player-info" id="playerTitle" style="display:none;">
+      <h2 id="playerTitleText" style="font-size:20px;font-weight:600;"></h2>
+    </div>
+    <div class="player-wrapper aspect-16-9" id="playerContainer"></div>
+    <div class="player-info">
+      <p>Powered by Video QR</p>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// State
+// ============================================================
+let currentType = 'youtube';
+let currentQrData = null;
+let currentPlayerUrl = '';
+
+// ============================================================
+// Init — detect player mode
+// ============================================================
+(function init() {
+  const params = new URLSearchParams(window.location.search);
+  const videoParam = params.get('v');
+  const titleParam = params.get('t');
+
+  if (videoParam) {
+    showPlayer(videoParam, titleParam);
+  } else {
+    showGenerator();
+    // Auto-set base URL
+    const autoUrl = window.location.origin + window.location.pathname;
+    const baseInput = document.getElementById('baseUrl');
+    if (autoUrl && !autoUrl.startsWith('file://') && !autoUrl.startsWith('null')) {
+      baseInput.value = autoUrl;
+    }
+    baseInput.placeholder = autoUrl || 'https://your-site.com/video-qr.html';
+  }
+})();
+
+// ============================================================
+// Tab switching
+// ============================================================
+document.querySelectorAll('.type-tab').forEach(tab => {
+  tab.addEventListener('click', function() {
+    document.querySelectorAll('.type-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(p => p.classList.remove('active'));
+    this.classList.add('active');
+    currentType = this.dataset.type;
+    document.querySelector(`[data-panel="${currentType}"]`).classList.add('active');
+  });
+});
+
+// ============================================================
+// Get resource URL from inputs
+// ============================================================
+function getResourceUrl() {
+  let url = '';
+  if (currentType === 'youtube') url = document.getElementById('ytUrl').value.trim();
+  else if (currentType === 'vimeo') url = document.getElementById('vmUrl').value.trim();
+  else if (currentType === 'pdf') url = document.getElementById('pdfUrl').value.trim();
+  else url = document.getElementById('dcUrl').value.trim();
+  return url;
+}
+
+// ============================================================
+// Check if URL is a PDF
+// ============================================================
+function isPdfUrl(url) {
+  return /\.pdf(\?|$)/i.test(url) || currentType === 'pdf';
+}
+
+// ============================================================
+// Parse YouTube ID
+// ============================================================
+function parseYoutubeId(url) {
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/,
+    /youtube\.com\/watch\?.*v=([a-zA-Z0-9_-]{11})/
+  ];
+  for (const p of patterns) {
+    const m = url.match(p);
+    if (m) return m[1];
+  }
+  return null;
+}
+
+// ============================================================
+// Parse Vimeo ID
+// ============================================================
+function parseVimeoId(url) {
+  const m = url.match(/vimeo\.com\/(\d+)/);
+  return m ? m[1] : null;
+}
+
+// ============================================================
+// Validate URL
+// ============================================================
+function validateUrl(url) {
+  try {
+    const u = new URL(url);
+    return u.protocol === 'http:' || u.protocol === 'https:';
+  } catch { return false; }
+}
+
+// ============================================================
+// Show status message
+// ============================================================
+function showStatus(msg, type) {
+  const el = document.getElementById('statusMsg');
+  el.textContent = msg;
+  el.className = 'status show ' + type;
+}
+
+function hideStatus() {
+  const el = document.getElementById('statusMsg');
+  el.className = 'status';
+}
+
+// ============================================================
+// Generate QR Code
+// ============================================================
+function generateQR() {
+  hideStatus();
+  const resourceUrl = getResourceUrl();
+  const title = document.getElementById('videoTitle').value.trim();
+  let baseUrl = document.getElementById('baseUrl').value.trim();
+
+  // Validate resource URL
+  if (!resourceUrl) {
+    showStatus('Please enter a URL.', 'error');
+    return;
+  }
+
+  if (currentType === 'youtube' && !parseYoutubeId(resourceUrl)) {
+    showStatus('Invalid YouTube URL. Please check and try again.', 'error');
+    return;
+  }
+  if (currentType === 'vimeo' && !parseVimeoId(resourceUrl)) {
+    showStatus('Invalid Vimeo URL. Please check and try again.', 'error');
+    return;
+  }
+  if ((currentType === 'direct' || currentType === 'pdf') && !validateUrl(resourceUrl)) {
+    showStatus('Invalid URL. Make sure it starts with https://', 'error');
+    return;
+  }
+
+  // Determine base URL
+  if (!baseUrl) {
+    baseUrl = window.location.origin + window.location.pathname;
+    if (baseUrl.startsWith('file://') || baseUrl.startsWith('null')) {
+      document.getElementById('pageUrlConfig').classList.add('show');
+      showStatus('Please set your hosting URL first (see below).', 'error');
+      return;
+    }
+    document.getElementById('baseUrl').value = baseUrl;
+  }
+
+  // Clean base URL
+  baseUrl = baseUrl.replace(/\/+$/, '');
+  if (!baseUrl.startsWith('http')) {
+    showStatus('Hosting URL must start with https://', 'error');
+    document.getElementById('pageUrlConfig').classList.add('show');
+    return;
+  }
+
+  // Build player URL
+  const params = new URLSearchParams();
+  params.set('v', resourceUrl);
+  if (title) params.set('t', title);
+  const playerUrl = baseUrl + '?' + params.toString();
+
+  // Generate QR
+  const container = document.getElementById('qrContainer');
+  container.innerHTML = '';
+
+  try {
+    new QRCode(container, {
+      text: playerUrl,
+      width: 256,
+      height: 256,
+      colorDark: '#111827',
+      colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.M
+    });
+
+    currentQrData = playerUrl;
+    currentPlayerUrl = playerUrl;
+
+    // Show QR card
+    document.getElementById('qrCard').classList.add('show');
+    document.getElementById('qrUrlDisplay').textContent = playerUrl;
+    document.getElementById('pageUrlConfig').classList.add('show');
+
+    showStatus('QR code generated! Test it by scanning with your phone.', 'success');
+  } catch (e) {
+    showStatus('Failed to generate QR code: ' + e.message, 'error');
+  }
+}
+
+// ============================================================
+// Download QR as PNG
+// ============================================================
+function downloadQR() {
+  const container = document.getElementById('qrContainer');
+  const canvas = container.querySelector('canvas');
+  if (!canvas) return;
+
+  const link = document.createElement('a');
+  link.download = 'video-qr-code.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+}
+
+// ============================================================
+// Preview player
+// ============================================================
+function previewPlayer() {
+  if (currentPlayerUrl) {
+    window.open(currentPlayerUrl, '_blank');
+  }
+}
+
+// ============================================================
+// Show generator view
+// ============================================================
+function showGenerator() {
+  document.getElementById('generator').style.display = 'block';
+  document.getElementById('player').classList.remove('active');
+}
+
+// ============================================================
+// Show player view
+// ============================================================
+function showPlayer(videoUrl, title) {
+  document.getElementById('generator').style.display = 'none';
+  document.getElementById('player').classList.add('active');
+
+  const container = document.getElementById('playerContainer');
+  container.innerHTML = '';
+
+  // Title
+  if (title) {
+    document.getElementById('playerTitle').style.display = 'block';
+    document.getElementById('playerTitleText').textContent = decodeURIComponent(title);
+  }
+
+  // Check if it's a PDF
+  if (isPdfUrl(videoUrl)) {
+    // PDF viewer
+    container.classList.remove('aspect-16-9');
+    container.style.background = 'transparent';
+    const iframe = document.createElement('iframe');
+    iframe.src = videoUrl;
+    iframe.className = 'pdf-viewer';
+    iframe.title = 'PDF viewer';
+    container.appendChild(iframe);
+    return;
+  }
+
+  // Detect video type and render player
+  const ytId = parseYoutubeId(videoUrl);
+  const vmId = parseVimeoId(videoUrl);
+
+  if (ytId) {
+    // YouTube embed
+    const iframe = document.createElement('iframe');
+    iframe.src = `https://www.youtube.com/embed/${ytId}?autoplay=1&rel=0&modestbranding=1`;
+    iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+    iframe.allowFullscreen = true;
+    iframe.title = 'YouTube video player';
+    container.appendChild(iframe);
+  } else if (vmId) {
+    // Vimeo embed
+    const iframe = document.createElement('iframe');
+    iframe.src = `https://player.vimeo.com/video/${vmId}?autoplay=1&title=0&byline=0&portrait=0`;
+    iframe.allow = 'autoplay; fullscreen; picture-in-picture';
+    iframe.allowFullscreen = true;
+    iframe.title = 'Vimeo video player';
+    container.appendChild(iframe);
+  } else {
+    // Direct video URL
+    container.classList.remove('aspect-16-9');
+    const video = document.createElement('video');
+    video.src = videoUrl;
+    video.controls = true;
+    video.playsInline = true;
+    video.autoplay = true;
+    video.muted = true; // muted to allow autoplay on mobile
+    video.setAttribute('playsinline', '');
+    video.style.width = '100%';
+    video.style.display = 'block';
+    video.style.borderRadius = '12px';
+    video.style.maxHeight = '80vh';
+    container.appendChild(video);
+  }
+}
+</script>
+</body>
+</html>
